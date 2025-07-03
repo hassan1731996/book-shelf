@@ -93,3 +93,5 @@ app.listen(PORT, () => {
   console.log(`Environment: ${process.env.NODE_ENV || "development"}`)
   console.log(`Test the server: http://localhost:${PORT}/api/test`)
 })
+
+module.exports = app; // Export the app
