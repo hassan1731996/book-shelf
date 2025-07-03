@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://v0-recreate-ui-screenshot-iota-beige.vercel.app/api"
 
 export interface Book {
   _id: string

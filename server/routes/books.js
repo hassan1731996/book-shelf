@@ -17,32 +17,64 @@ const getRandomColor = () => {
   return colors[Math.floor(Math.random() * colors.length)]
 }
 
+// Validation middleware
+const validateBook = (req, res, next) => {
+  const { title, author, genre, description, publishedYear } = req.body
+
+  if (!title || !author || !genre || !description) {
+    return res.status(400).json({
+      message: "Missing required fields: title, author, genre, and description are required",
+    })
+  }
+
+  if (publishedYear && (publishedYear < 1000 || publishedYear > new Date().getFullYear())) {
+    return res.status(400).json({
+      message: "Published year must be between 1000 and current year",
+    })
+  }
+
+  next()
+}
+
 // GET all books
 router.get("/", async (req, res) => {
   try {
+    console.log("Fetching all books...")
     const books = await Book.find().sort({ createdAt: -1 })
+    console.log(`Found ${books.length} books`)
     res.json(books)
   } catch (error) {
-    res.status(500).json({ message: error.message })
+    console.error("Error fetching books:", error)
+    res.status(500).json({ message: "Failed to fetch books", error: error.message })
   }
 })
 
 // GET single book
 router.get("/:id", async (req, res) => {
   try {
-    const book = await Book.findById(req.params.id)
+    const { id } = req.params
+
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: "Invalid book ID format" })
+    }
+
+    const book = await Book.findById(id)
     if (!book) {
       return res.status(404).json({ message: "Book not found" })
     }
+
     res.json(book)
   } catch (error) {
-    res.status(500).json({ message: error.message })
+    console.error("Error fetching book:", error)
+    res.status(500).json({ message: "Failed to fetch book", error: error.message })
   }
 })
 
 // POST new book
-router.post("/", async (req, res) => {
+router.post("/", validateBook, async (req, res) => {
   try {
+    console.log("Creating new book:", req.body)
+
     const bookData = {
       ...req.body,
       coverColor: getRandomColor(),
@@ -51,16 +83,33 @@ router.post("/", async (req, res) => {
 
     const book = new Book(bookData)
     const newBook = await book.save()
+
+    console.log("Book created successfully:", newBook._id)
     res.status(201).json(newBook)
   } catch (error) {
-    res.status(400).json({ message: error.message })
+    console.error("Error creating book:", error)
+
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        message: "Validation error",
+        errors: Object.values(error.errors).map((e) => e.message),
+      })
+    }
+
+    res.status(500).json({ message: "Failed to create book", error: error.message })
   }
 })
 
 // PUT update book
-router.put("/:id", async (req, res) => {
+router.put("/:id", validateBook, async (req, res) => {
   try {
-    const book = await Book.findById(req.params.id)
+    const { id } = req.params
+
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: "Invalid book ID format" })
+    }
+
+    const book = await Book.findById(id)
     if (!book) {
       return res.status(404).json({ message: "Book not found" })
     }
@@ -72,24 +121,42 @@ router.put("/:id", async (req, res) => {
     })
 
     const updatedBook = await book.save()
+    console.log("Book updated successfully:", updatedBook._id)
     res.json(updatedBook)
   } catch (error) {
-    res.status(400).json({ message: error.message })
+    console.error("Error updating book:", error)
+
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        message: "Validation error",
+        errors: Object.values(error.errors).map((e) => e.message),
+      })
+    }
+
+    res.status(500).json({ message: "Failed to update book", error: error.message })
   }
 })
 
 // DELETE book
 router.delete("/:id", async (req, res) => {
   try {
-    const book = await Book.findById(req.params.id)
+    const { id } = req.params
+
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: "Invalid book ID format" })
+    }
+
+    const book = await Book.findById(id)
     if (!book) {
       return res.status(404).json({ message: "Book not found" })
     }
 
-    await Book.findByIdAndDelete(req.params.id)
+    await Book.findByIdAndDelete(id)
+    console.log("Book deleted successfully:", id)
     res.json({ message: "Book deleted successfully" })
   } catch (error) {
-    res.status(500).json({ message: error.message })
+    console.error("Error deleting book:", error)
+    res.status(500).json({ message: "Failed to delete book", error: error.message })
   }
 })
 
